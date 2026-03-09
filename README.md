@@ -1,53 +1,150 @@
-# Automated Document Perspective Correction and Adaptive Text Enhancement
+# 📄 Mobile Document Enhancement
 
-This project addresses the common issues of perspective distortion and poor legibility in document photos captured via mobile devices. The primary goal is to transform skewed, low-contrast images into scan-quality digital documents.
+**Automated Document Perspective Correction and Adaptive Text Enhancement**
 
-## 📌 Problem Definition
-Mobile document captures often suffer from:
-* **Perspective Distortion:** Skewed angles making the document appear non-rectangular.
-* **Poor Legibility:** Low contrast and uneven lighting (shadows, glares).
-* **Noise:** Grainy artifacts from mobile sensors.
+Transform skewed, low-contrast mobile document photos into clean, scan-quality digital images — all from the command line.
 
 ---
 
-## 🛠 Planned Methods (Course Components)
+## ✨ What It Does
 
-### 1. Geometric Transformations
-I will implement **4-point perspective warping** to rectify the document's orientation. This process involves detecting the document corners and mapping them to a standard rectangular coordinate system.
+Mobile cameras capture documents at awkward angles, under uneven lighting, and with sensor noise. This tool runs a **4-stage image processing pipeline** that automatically:
 
-### 2. Spatial Domain Processing
-* **Noise Reduction:** Applying **Gaussian Smoothing** for initial noise reduction.
-* **Text Enhancement:** Following smoothing with **Unsharp Masking** to enhance text edges and improve readability.
+1. **Detects & corrects perspective** — finds the document boundary and warps it into a flat, rectangular view.
+2. **Reduces noise & sharpens text** — applies Gaussian smoothing followed by unsharp masking for crisp, readable text.
+3. **Binarizes with adaptive thresholding** — compares **Sauvola** and **Adaptive Gaussian** thresholding to separate text from the background, even under uneven illumination.
+4. **Evaluates quality quantitatively** — computes **MSE** and **PSNR** metrics to objectively determine which thresholding method produced the better result.
 
-### 3. Image Segmentation
-**Adaptive Thresholding** techniques will be used to effectively separate text from backgrounds under various lighting conditions, overcoming the limitations of static thresholding.
-
-### 4. Implementation Stack
-The project is developed using the following tools:
-* **Language:** Python
-* **Libraries:** OpenCV, NumPy, Matplotlib
+Every intermediate result is saved, and an optional visual comparison grid is displayed via Matplotlib.
 
 ---
 
-## 📊 Evaluation & Comparison
-To evaluate the effectiveness of the proposed system, a comparative analysis is performed:
+## 🏗️ Project Structure
 
-* **Technique Comparison:** Global Thresholding (Otsu) versus **Adaptive Thresholding** to evaluate text clarity.
-* **Quantitative Metrics:** * **MSE** (Mean Squared Error)
-    * **PSNR** (Peak Signal-to-Noise Ratio)
-
-The PSNR is calculated as follows:
-$$PSNR = 10 \cdot \log_{10}\left(\frac{MAX_I^2}{MSE}\right)$$
-
----
-
-## 📂 Dataset
-I plan to use a **self-collected dataset** of document photos taken under different angles, various distances, and diverse lighting environments to ensure the robustness of the algorithm.
+```
+mobile-document-enhancement/
+├── main.py                   # Pipeline orchestrator & CLI entry point
+├── perspective_correction.py # Document detection & 4-point warp
+├── enhancement.py            # Gaussian smoothing & unsharp masking
+├── thresholding.py           # Sauvola & adaptive Gaussian thresholding
+├── evaluation.py             # MSE / PSNR metric computation
+├── utils.py                  # Image I/O & Matplotlib display helpers
+└── requirements.txt          # Python dependencies
+```
 
 ---
 
-## 🚀 How to Run (Placeholder)
-*(This section can be updated as the project develops)*
-1. Clone the repository.
-2. Install dependencies: `pip install opencv-python numpy matplotlib`
-3. Run the main script: `python main.py`
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.8+
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/berkegemenoguz/mobile-document-enhancement.git
+cd mobile-document-enhancement
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Quick Run
+
+```bash
+python main.py --image path/to/document.jpg
+```
+
+---
+
+## 📖 Usage
+
+```
+python main.py --image <IMAGE_PATH> [--output-dir <DIR>] [--no-display]
+```
+
+| Argument        | Required | Default    | Description                                           |
+|-----------------|----------|------------|-------------------------------------------------------|
+| `--image`       | ✅       | —          | Path to the input document photo                      |
+| `--output-dir`  | ❌       | `output/`  | Directory where all output images are saved           |
+| `--no-display`  | ❌       | off        | Disable the Matplotlib pop-up windows (headless mode) |
+
+### Examples
+
+```bash
+# Basic usage — process a document and display results
+python main.py --image samples/receipt.jpg
+
+# Save outputs to a custom folder, skip visual display
+python main.py --image samples/receipt.jpg --output-dir results/ --no-display
+```
+
+### Output Files
+
+After a successful run the output directory will contain:
+
+| File                          | Description                                      |
+|-------------------------------|--------------------------------------------------|
+| `01_original.jpg`             | Copy of the input image                          |
+| `02_perspective_corrected.jpg`| Image after 4-point perspective warp             |
+| `03_smoothed.jpg`             | After Gaussian noise reduction                   |
+| `04_enhanced.jpg`             | After unsharp masking (sharpened text)            |
+| `05_sauvola_threshold.jpg`    | Binary result — Sauvola thresholding             |
+| `06_adaptive_threshold.jpg`   | Binary result — Adaptive Gaussian thresholding   |
+| `07_comparison_grid.jpg`      | Side-by-side grid of all stages                  |
+| `08_threshold_comparison.jpg` | Direct comparison of the two thresholding methods|
+
+---
+
+## 🔬 Pipeline Details
+
+### Stage 1 — Perspective Correction
+
+- Converts the image to grayscale and applies **Canny edge detection**.
+- Finds the largest quadrilateral contour (the document boundary).
+- Uses `cv2.getPerspectiveTransform` to warp the document into a top-down rectangular view.
+- If no document boundary is detected, the original image is passed through unchanged.
+
+### Stage 2 — Spatial Enhancement
+
+- **Gaussian Smoothing** removes high-frequency noise while preserving document structure.
+- **Unsharp Masking** (`sharpened = original + amount × (original − blurred)`) boosts text edges for improved readability.
+
+### Stage 3 — Thresholding Comparison
+
+Two local thresholding techniques are run and compared:
+
+| Method              | How It Works |
+|---------------------|--------------|
+| **Sauvola**         | `T(x,y) = mean × [1 + k × (std / R − 1)]` — adapts to local mean *and* standard deviation |
+| **Adaptive Gaussian** | Weighted Gaussian mean of a local neighborhood minus a constant `C` |
+
+Both handle uneven lighting far better than a single global threshold.
+
+### Stage 4 — Quantitative Evaluation
+
+| Metric | Formula | Interpretation |
+|--------|---------|----------------|
+| **MSE** | `(1/N) × Σ(Aᵢ − Bᵢ)²` | Lower is better (less distortion) |
+| **PSNR** | `10 · log₁₀(MAX² / MSE)` | Higher is better (dB scale) |
+
+The method with the higher PSNR is declared the winner and printed in the terminal summary.
+
+---
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Language  | Python 3   |
+| Computer Vision | OpenCV (`opencv-python ≥ 4.5`) |
+| Numerical Computing | NumPy (`≥ 1.21`) |
+| Visualization | Matplotlib (`≥ 3.4`) |
+
+---
+
+## 📝 License
+
+This project is developed for academic purposes.
