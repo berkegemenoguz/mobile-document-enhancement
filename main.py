@@ -82,32 +82,28 @@ def run_pipeline(image_path, output_dir="output", show_display=True):
    if show_display:
        print("\n[DISPLAY] Showing visual comparison...")
 
-
-       # Tüm aşamaları içeren ızgara görünümü
-       stages = {
-           "1. Original": original,
-           "2. Perspective Corrected": corrected,
-           "3. Gaussian Smoothed": smoothed,
-           "4. Unsharp Enhanced": enhanced,
-           "5. Sauvola Threshold": sauvola_binary,
-           "6. Niblack Threshold": niblack_binary,
-           "7. Adaptive Threshold": adaptive_binary,
-       }
-
-
-       display_comparison_grid(
-           stages,
-           figsize=(18, 14),
-           save_path=os.path.join(output_dir, "09_comparison_grid.jpg"),
+       # Window 1: Original vs Perspective Corrected
+       display_images(
+           [original, corrected],
+           ["Original", "Perspective Corrected"],
+           figsize=(14, 7),
+           save_path=os.path.join(output_dir, "08_window1_perspective.jpg"),
        )
 
-
-       # Eşikleme yöntemlerini yan yana gösteren karşılaştırma
+       # Window 2: Enhancement pipeline (Perspective Corrected → Smoothed → Enhanced)
        display_images(
-           [sauvola_binary,niblack_binary, adaptive_binary],
-           ["Sauvola Thresholding","Niblack Thresholding", "Adaptive Thresholding"],
+           [corrected, smoothed, enhanced],
+           ["Perspective Corrected", "Gaussian Smoothed", "Unsharp Enhanced"],
            figsize=(18, 7),
-           save_path=os.path.join(output_dir, "09_threshold_comparison.jpg"),
+           save_path=os.path.join(output_dir, "09_window2_enhancement.jpg"),
+       )
+
+       # Window 3: Thresholding results (Sauvola, Niblack, Adaptive)
+       display_images(
+           [sauvola_binary, niblack_binary, adaptive_binary],
+           ["Sauvola Threshold", "Niblack Threshold", "Adaptive Threshold"],
+           figsize=(18, 7),
+           save_path=os.path.join(output_dir, "10_window3_thresholds.jpg"),
        )
 
 
