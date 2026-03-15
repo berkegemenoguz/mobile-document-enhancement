@@ -38,7 +38,7 @@ def compute_psnr(image_a, image_b, max_pixel=255.0):
 # --- Yöntemlerin Karşılaştırmalı Analizi ve Raporlanması ---
 # Referans alınan görüntüye göre Sauvola ve Adaptive Threshold sonuçlarını kıyaslar,
 # verileri şık bir tablo şeklinde ekrana yazdırır ve kazananı belirler.
-def evaluate_methods(reference, sauvola_result, adaptive_result):
+def evaluate_methods(reference, sauvola_result, adaptive_result, niblack_result=None):
     import cv2
 
     print("\n[STEP 4] Quantitative Evaluation")
@@ -51,6 +51,10 @@ def evaluate_methods(reference, sauvola_result, adaptive_result):
     mse_sauvola = compute_mse(reference, sauvola_result)
     psnr_sauvola = compute_psnr(reference, sauvola_result)
 
+    # Niblack yöntemi için metrik hesapla
+    mse_niblack = compute_mse(reference, niblack_result)
+    psnr_niblack = compute_psnr(reference, niblack_result)
+
     # Adaptive yöntemi için metrikleri hesapla
     mse_adaptive = compute_mse(reference, adaptive_result)
     psnr_adaptive = compute_psnr(reference, adaptive_result)
@@ -61,23 +65,31 @@ def evaluate_methods(reference, sauvola_result, adaptive_result):
     print("  ╠══════════════════════╦════════════════╦══════════════╣")
     print("  ║       Method         ║   MSE          ║  PSNR (dB)   ║")
     print("  ╠══════════════════════╬════════════════╬══════════════╣")
-    print(f"  ║ Sauvola (Local)     ║  {mse_sauvola:>12.2f}  ║  {psnr_sauvola:>10.2f}  ║")
-    print(f"  ║ Adaptive (Gaussian) ║  {mse_adaptive:>12.2f}  ║  {psnr_adaptive:>10.2f}  ║")
+    print(f"  ║ Sauvola (Local)      ║  {mse_sauvola:>12.2f}  ║  {psnr_sauvola:>10.2f}  ║")
+    print(f"  ║ Niblack (Local)  ║  {mse_niblack:>12.2f}  ║  {psnr_niblack:>10.2f}  ║")
+    print(f"  ║ Adaptive (Gaussian)  ║  {mse_adaptive:>12.2f}  ║  {psnr_adaptive:>10.2f}  ║")
     print("  ╚══════════════════════╩════════════════╩══════════════╝")
 
-    # PSNR değerine göre daha yüksek başarı gösteren yöntemi seç (Daha yüksek = Daha iyi)
-    if psnr_adaptive > psnr_sauvola:
-        winner = "Adaptive Thresholding"
-    elif psnr_sauvola > psnr_adaptive:
-        winner = "Sauvola Thresholding"
-    else:
+    # Determine winner (highest PSNR)
+    psnr_scores = {
+        "Sauvola Thresholding": psnr_sauvola,
+        "Niblack Thresholding": psnr_niblack,
+        "Adaptive Thresholding": psnr_adaptive,
+    }
+    winner = max(psnr_scores, key=psnr_scores.get)
+
+    # Check for ties
+    max_psnr = psnr_scores[winner]
+    tied = [name for name, score in psnr_scores.items() if score == max_psnr]
+    if len(tied) > 1:
         winner = "Tie"
 
-    print(f"  ║  Better Method       ║  {winner:<28s} ║")
+    print(f"  ║  Best Method       ║  {winner:<31s} ║")
     print("  ╚══════════════════════╩═══════════════════════════════╝")
 
     results = {
         "sauvola": {"mse": mse_sauvola, "psnr": psnr_sauvola},
+        "niblack": {"mse": mse_niblack, "psnr": psnr_niblack},
         "adaptive": {"mse": mse_adaptive, "psnr": psnr_adaptive},
         "winner": winner,
     }
