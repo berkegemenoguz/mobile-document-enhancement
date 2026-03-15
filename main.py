@@ -64,16 +64,17 @@ def run_pipeline(image_path, output_dir="output", show_display=True):
 
 
    sauvola_binary = thresh_results["sauvola"]
+   niblack_binary = thresh_results["niblack"]
    adaptive_binary = thresh_results["adaptive"]
 
 
    save_image(os.path.join(output_dir, "05_sauvola_threshold.jpg"), sauvola_binary)
-   save_image(os.path.join(output_dir, "06_adaptive_threshold.jpg"), adaptive_binary)
-
+   save_image(os.path.join(output_dir, "06_niblack_threshold.jpg"), niblack_binary)
+   save_image(os.path.join(output_dir, "07_adaptive_threshold.jpg"), adaptive_binary)
 
    # --- 4. AŞAMA: Sayısal Değerlendirme ---
    # Hangi yöntemin daha başarılı olduğunu MSE ve PSNR değerleriyle ölçer.
-   eval_results = evaluate_methods(enhanced, sauvola_binary, adaptive_binary)
+   eval_results = evaluate_methods(enhanced, sauvola_binary, adaptive_binary, niblack_binary)
 
 
    # --- GÖRSELLEŞTİRME ---
@@ -89,23 +90,24 @@ def run_pipeline(image_path, output_dir="output", show_display=True):
            "3. Gaussian Smoothed": smoothed,
            "4. Unsharp Enhanced": enhanced,
            "5. Sauvola Threshold": sauvola_binary,
-           "6. Adaptive Threshold": adaptive_binary,
+           "6. Niblack Threshold": niblack_binary,
+           "7. Adaptive Threshold": adaptive_binary,
        }
 
 
        display_comparison_grid(
            stages,
-           figsize=(18, 12),
-           save_path=os.path.join(output_dir, "07_comparison_grid.jpg"),
+           figsize=(18, 14),
+           save_path=os.path.join(output_dir, "09_comparison_grid.jpg"),
        )
 
 
        # Eşikleme yöntemlerini yan yana gösteren karşılaştırma
        display_images(
-           [sauvola_binary, adaptive_binary],
-           ["Sauvola Thresholding", "Adaptive Thresholding"],
-           figsize=(14, 7),
-           save_path=os.path.join(output_dir, "08_threshold_comparison.jpg"),
+           [sauvola_binary,niblack_binary, adaptive_binary],
+           ["Sauvola Thresholding","Niblack Thresholding", "Adaptive Thresholding"],
+           figsize=(18, 7),
+           save_path=os.path.join(output_dir, "09_threshold_comparison.jpg"),
        )
 
 

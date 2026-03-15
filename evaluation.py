@@ -66,7 +66,7 @@ def evaluate_methods(reference, sauvola_result, adaptive_result, niblack_result=
     print("  ║       Method         ║   MSE          ║  PSNR (dB)   ║")
     print("  ╠══════════════════════╬════════════════╬══════════════╣")
     print(f"  ║ Sauvola (Local)      ║  {mse_sauvola:>12.2f}  ║  {psnr_sauvola:>10.2f}  ║")
-    print(f"  ║ Niblack (Local)  ║  {mse_niblack:>12.2f}  ║  {psnr_niblack:>10.2f}  ║")
+    print(f"  ║ Niblack (Local)      ║  {mse_niblack:>12.2f}  ║  {psnr_niblack:>10.2f}  ║")
     print(f"  ║ Adaptive (Gaussian)  ║  {mse_adaptive:>12.2f}  ║  {psnr_adaptive:>10.2f}  ║")
     print("  ╚══════════════════════╩════════════════╩══════════════╝")
 
@@ -84,7 +84,7 @@ def evaluate_methods(reference, sauvola_result, adaptive_result, niblack_result=
     if len(tied) > 1:
         winner = "Tie"
 
-    print(f"  ║  Best Method       ║  {winner:<31s} ║")
+    print(f"  ║  Best Method         ║{winner:<31s}  ║")
     print("  ╚══════════════════════╩═══════════════════════════════╝")
 
     results = {
