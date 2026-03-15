@@ -38,26 +38,6 @@ def apply_sauvola_threshold(image, window_size=25, k=0.2, R=128):
     return binary, params
 
 def apply_niblack_threshold(image, window_size=25, k=-0.2):
-    """Apply Niblack's local thresholding method.
-
-    Niblack's method computes a local threshold for each pixel based on
-    the local mean and standard deviation within a neighborhood window:
-
-        T(x,y) = mean(x,y) + k * std(x,y)
-
-    This is the predecessor of Sauvola's method. It works well for
-    documents with high contrast, but tends to produce noise (black
-    artifacts) in background regions with low variance.
-
-    Args:
-        image (numpy.ndarray): Input image (BGR or grayscale).
-        window_size (int): Size of the local neighborhood window (must be odd).
-        k (float): Sensitivity parameter (typically -0.2 to -0.5).
-                   More negative k → more pixels classified as foreground.
-
-    Returns:
-        tuple: (binary_image, parameters_dict)
-    """
     # Convert to grayscale if needed
     if len(image.shape) == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
