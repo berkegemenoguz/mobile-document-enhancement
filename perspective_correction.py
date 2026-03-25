@@ -2,20 +2,23 @@ import cv2
 import numpy as np
 
 
-# --- Köşe Noktalarını Tutarlı Bir Şekilde Sıralama ---
-# Rastgele sırada gelen 4 köşe noktasını (x, y) koordinatlarına göre;
-# [Üst-Sol, Üst-Sağ, Alt-Sağ, Alt-Sol] şeklinde sabit bir sıraya dizer.
+# --- Consistently Ordering Corner Points ---
+# This function takes 4 random corner points and sorts them based on their (x, y) coordinates.
+# It ensures a fixed order: [Top-Left, Top-Right, Bottom-Right, Bottom-Left].
+# This consistency is mandatory for calculating the correct perspective transformation matrix.
 def order_points(pts):
-    # 4 nokta için boş bir matris oluştur
+    # Create a placeholder matrix for the 4 ordered points
     rect = np.zeros((4, 2), dtype="float32")
     pts = pts.reshape(4, 2)
 
-    # Üst-sol nokta en küçük toplama (x+y), alt-sağ en büyük toplama sahiptir
+    # The top-left point will have the smallest sum (x+y),
+    # while the bottom-right point will have the largest sum.
     s = pts.sum(axis=1)
     rect[0] = pts[np.argmin(s)]  # Top-left
     rect[2] = pts[np.argmax(s)]  # Bottom-right
 
-    # Üst-sağ nokta en küçük farka (y-x), alt-sol en büyük farka sahiptir
+    # The top-right point will have the smallest difference (y-x),
+    # while the bottom-left point will have the largest difference.
     d = np.diff(pts, axis=1).flatten()
     rect[1] = pts[np.argmin(d)]  # Top-right
     rect[3] = pts[np.argmax(d)]  # Bottom-left
@@ -23,35 +26,38 @@ def order_points(pts):
     return rect
 
 
-# --- Görüntü İçindeki Dökümanı Tespit Etme ---
-# Gri tonlama, bulanıklaştırma ve Canny kenar algılama kullanarak
-# kağıdın sınırlarını bulur ve en büyük 4 köşeli alanı (konturu) yakalar.
+# --- Detecting the Document within the Image ---
+# This function uses grayscale conversion, Gaussian blurring, and Canny edge detection
+# to identify the boundaries of the paper. It then captures the largest contour
+# that resembles a 4-cornered polygon (the document).
 def detect_document(image):
-    # Ön işleme: Kenarları daha iyi yakalamak için griye çevir ve gürültüyü azalt
+    # Pre-processing: Convert to grayscale and blur to reduce high-frequency noise
+    # that could lead to false edge detection.
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # Canny algoritması ile kenarları belirle
+    # Detect edges using the Canny algorithm
     edged = cv2.Canny(blurred, 50, 200)
 
-    # Kenarlardaki küçük boşlukları kapatmak için genişletme (dilation) uygula
+    # Apply dilation to close small gaps in the detected edges,
+    # making the contour discovery more robust.
     kernel = np.ones((5, 5), np.uint8)
     edged = cv2.dilate(edged, kernel, iterations=1)
 
-    # Tüm konturları (çizgisel alanları) bul
+    # Find all contours (line segments/areas) in the processed image
     contours, _ = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Konturları alanlarına göre büyükten küçüğe sırala ve ilk 5'i al
+    # Sort contours by area in descending order and keep the top 5 largest candidates
     contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
 
     document_contour = None
 
     for contour in contours:
-        # Konturu basitleştir (poligon yaklaşımı)
+        # Approximate the contour to simplify it into a polygon
         peri = cv2.arcLength(contour, True)
         approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
 
-        # Eğer basitleştirilmiş kontur 4 köşeye sahipse, dökümanı bulduk demektir
+        # If the simplified polygon has exactly 4 corners, we assume we found the document
         if len(approx) == 4:
             document_contour = approx
             break
@@ -62,24 +68,28 @@ def detect_document(image):
     return None
 
 
-# --- Perspektif Dönüşümü ve Kuş Bakışı Görünüm ---
-# Tespit edilen 4 noktayı kullanarak görüntüyü "gerer" (warp)
-# ve dökümanı dikdörtgen formunda, tam karşıdan bakılıyormuş gibi yeniden oluşturur.
+# --- Perspective Transformation and Bird's-Eye View ---
+# Using the 4 detected corners, this function "warps" the image to correct
+# the perspective, making the document appear as a flat rectangle viewed
+# directly from above.
 def four_point_warp(image, pts):
     rect = order_points(pts)
     (tl, tr, br, bl) = rect
 
-    # Yeni görüntünün genişliğini hesapla (alt ve üst kenarların maksimumu)
+    # Calculate the width of the new image by finding the maximum distance
+    # between bottom-right/bottom-left and top-right/top-left x-coordinates.
     width_a = np.linalg.norm(br - bl)
     width_b = np.linalg.norm(tr - tl)
     max_width = max(int(width_a), int(width_b))
 
-    # Yeni görüntünün yüksekliğini hesapla (sağ ve sol kenarların maksimumu)
+    # Calculate the height of the new image by finding the maximum distance
+    # between top-right/bottom-right and top-left/bottom-left y-coordinates.
     height_a = np.linalg.norm(tr - br)
     height_b = np.linalg.norm(tl - bl)
     max_height = max(int(height_a), int(height_b))
 
-    # Hedef noktalar (görüntünün yeni, düz köşeleri)
+    # Define the destination points for the "unfolded" view
+    # (the corners of the new, perfectly rectangular image).
     dst = np.array([
         [0, 0],
         [max_width - 1, 0],
@@ -87,20 +97,21 @@ def four_point_warp(image, pts):
         [0, max_height - 1]
     ], dtype="float32")
 
-    # Dönüşüm matrisini hesapla ve perspektifi uygula
+    # Compute the perspective transform matrix and apply it to the source image
     matrix = cv2.getPerspectiveTransform(rect, dst)
     warped = cv2.warpPerspective(image, matrix, (max_width, max_height))
 
     return warped
 
 
-# --- Perspektif Düzeltme Ana Süreci ---
-# Döküman algılama ve perspektif bükme (warp) işlemlerini koordine eder.
+# --- Main Perspective Correction Process ---
+# This coordinates the document detection and the warping process.
+# It serves as the entry point for Step 1 of the document processing pipeline.
 def correct_perspective(image):
     print("\n[STEP 1] Perspective Correction")
     print("  Detecting document boundaries...")
 
-    # Köşeleri bul
+    # Locate the four corners of the document
     corners = detect_document(image)
 
     if corners is None:
@@ -110,7 +121,7 @@ def correct_perspective(image):
 
     print(f"  Document corners found: {corners.tolist()}")
 
-    # Bulunan köşelere göre görüntüyü düzelt
+    # Rectify the image based on the detected corners
     warped = four_point_warp(image, corners)
     print(f"  Warped image size: {warped.shape[1]}x{warped.shape[0]}")
 
